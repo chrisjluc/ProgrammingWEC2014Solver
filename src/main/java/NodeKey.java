@@ -24,6 +24,6 @@ public class NodeKey {
     }
 
     public int hashCode(){
-        return row + 991^col;
+        return row + 10991*col;
     }
 }

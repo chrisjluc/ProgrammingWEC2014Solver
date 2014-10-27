@@ -31,6 +31,6 @@ public class Node {
     }
 
     public int hashCode(){
-        return ((int) c) + 389^row + 991^col;
+        return ((int) c)*3593 + 3583*row + 3581*col;
     }
 }
