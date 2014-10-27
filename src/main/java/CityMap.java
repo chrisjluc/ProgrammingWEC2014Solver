@@ -9,27 +9,64 @@ public class CityMap {
     HashMap<NodeKey, Node> nodesByNodeKey = new HashMap<NodeKey, Node>();
     HashMap<Character, Node> specialNodes = new HashMap<Character, Node>();
     Stack<Node> nodesToVisit = new Stack<Node>();
+    char[][] mapData;
 
-    char[][] data;
-
-    public int findShortestDistance(Character startChar, Character finishChar){
-        if(!specialNodes.containsKey(startChar) || !specialNodes.containsKey(finishChar))
+    /**
+     * Since the map can be treated as an unweighted graph
+     * Use breadth traversal to find the shortest distance between two paths
+     * @param startChar
+     * @param endChar
+     * @return
+     */
+    public int findShortestDistance(Character startChar, Character endChar){
+        if(!specialNodes.containsKey(startChar) || !specialNodes.containsKey(endChar))
             return -1;
         Node start = specialNodes.get(startChar);
-        Node finish = specialNodes.get(finishChar);
+        Node end = specialNodes.get(endChar);
 
-        // Some Shortest distance graph traversal - Dijkstra
+        Stack<Node> futureNodesToVisit = new Stack<Node>();
+        nodesToVisit = new Stack<Node>();
+        nodesToVisit.push(start);
 
-        return -1;
+        int distance = 0;
+
+        traversal:
+        while(true){
+            distance++;
+            while(!nodesToVisit.isEmpty()) {
+                Node visitedNode = nodesToVisit.pop();
+                visitedNode.visited = true;
+                for (Node node : visitedNode.connectedNodes) {
+                    if (node.equals(end))
+                        break traversal;
+                    if (!node.visited && !futureNodesToVisit.contains(node) && !nodesToVisit.contains(node))
+                        futureNodesToVisit.push(node);
+                }
+            }
+
+            if(futureNodesToVisit.isEmpty())
+                break;
+
+            nodesToVisit = futureNodesToVisit;
+            futureNodesToVisit = new Stack<Node>();
+        }
+        resetNodesVisited();
+
+        return distance;
+    }
+
+    private void resetNodesVisited(){
+        for(Node n : nodesByNodeKey.values())
+            n.visited = false;
     }
 
     /**
      * Construct graph from 2D char array
      * Use depth-first traversal via stack to link nodes
-     * @param data
+     * @param mapData
      */
-    public CityMap(char[][] data) {
-        this.data = data;
+    public CityMap(char[][] mapData) {
+        this.mapData = mapData;
         pushFirstValidNodeToStack();
 
         while(!nodesToVisit.isEmpty()){
@@ -51,15 +88,11 @@ public class CityMap {
             key = new NodeKey(currentNode.row + 1, currentNode.col);
             linkNodes(currentNode, key);
         }
-
         nodesToVisit = null;
-
     }
 
     private void linkNodes(Node currentNode, NodeKey key){
-
         Node candidate;
-
         if(nodesByNodeKey.containsKey(key))
             candidate = nodesByNodeKey.get(key);
         else{
@@ -87,9 +120,9 @@ public class CityMap {
      * Pushes node that's not 'X' to the stack to begin traversal
      */
     private void pushFirstValidNodeToStack(){
-        for (int i = 0; i < data.length; i++) {
-            for (int j = 0; j < data[0].length; j++) {
-                char c = data[i][j];
+        for (int i = 0; i < mapData.length; i++) {
+            for (int j = 0; j < mapData[0].length; j++) {
+                char c = mapData[i][j];
                 if (c == 'X')
                     continue;
                 Node first = new Node(c,i,j);
@@ -103,12 +136,12 @@ public class CityMap {
     }
 
     /**
-     * Wrapper to get value from data
+     * Wrapper to get value from mapData
      * @param key
      * @return
      */
     private char getCharFromData(NodeKey key){
-        return data[key.row][key.col];
+        return mapData[key.row][key.col];
     }
 
     /**
@@ -117,6 +150,6 @@ public class CityMap {
      * @return
      */
     private Node createNode(NodeKey key){
-        return new Node(data[key.row][key.col], key.row, key.col);
+        return new Node(mapData[key.row][key.col], key.row, key.col);
     }
 }

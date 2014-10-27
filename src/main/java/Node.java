@@ -9,6 +9,7 @@ public class Node {
     int col;
     char c;
     HashSet<Node> connectedNodes;
+    boolean visited;
 
     public Node(char c, int row, int col) {
         this.col = col;

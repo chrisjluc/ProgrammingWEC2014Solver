@@ -12,6 +12,12 @@ public class Solver {
                 {'X',' ',' ','X','X',' ','X','X'},
                 {'X',' ',' ',' ',' ',' ','B','X'},
                 {'X','X','X','X','X','X','X','X'}};
+
+        char[][] requests = {{'A','a'},{'B','b'}};
+
         CityMap cm = new CityMap(map);
+        System.out.println(cm.findShortestDistance('a','T'));
+        System.out.println(cm.findShortestDistance('a','B'));
+
     }
 }
