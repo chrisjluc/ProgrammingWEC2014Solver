@@ -1,63 +1,96 @@
-import java.util.HashMap;
-import java.util.Stack;
+import models.Node;
+import models.Point;
+
+import java.util.*;
 
 /**
  * Created by chrisjluc on 2014-10-26.
  */
 public class CityMap {
 
-    HashMap<NodeKey, Node> nodesByNodeKey = new HashMap<NodeKey, Node>();
-    HashMap<Character, Node> specialNodes = new HashMap<Character, Node>();
+    HashMap<Point, Node> nodesByNodeKey = new HashMap<Point, Node>();
     Stack<Node> nodesToVisit = new Stack<Node>();
     char[][] mapData;
 
     /**
-     * Since the map can be treated as an unweighted graph
-     * Use breadth traversal to find the shortest distance between two paths
-     * @param startChar
-     * @param endChar
+     * Find shortest path between two points
+     * @param startPoint
+     * @param endPoint
      * @return
      */
-    public int findShortestDistance(Character startChar, Character endChar){
-        if(!specialNodes.containsKey(startChar) || !specialNodes.containsKey(endChar))
-            return -1;
-        Node start = specialNodes.get(startChar);
-        Node end = specialNodes.get(endChar);
+    public List<Point> findShortestPath(Point startPoint, final Point endPoint){
+        return findShortestPath(startPoint, new ArrayList<Point>(Arrays.asList(endPoint)));
+    }
+    /**
+     * Since the map can be treated as an unweighted graph
+     * Use breadth traversal to find the shortest path to the closest given List of points
+     * @param startPoint
+     * @param endPoints
+     * @return
+     */
+    public List<Point> findShortestPath(Point startPoint, List<Point> endPoints){
+        Node start = nodesByNodeKey.get(startPoint);
+        if(endPoints.size() == 0)
+            return null;
 
+        // Don't have to travel anywhere to reach an endpoint
+        if(endPoints.contains(startPoint))
+            return new ArrayList<Point>();
+
+        // Convert points to nodes, so they can be found in the map
+        List<Node> endNodes = new ArrayList<Node>();
+        for(Point p : endPoints)
+            endNodes.add(nodesByNodeKey.get(p));
+
+
+        // Every iteration, add nodes to visit to futureNodesToVisit while iterating through nodesToVisit
+        // Breadth search happens within the traversal while loop
         Stack<Node> futureNodesToVisit = new Stack<Node>();
         nodesToVisit = new Stack<Node>();
         nodesToVisit.push(start);
 
-        int distance = 0;
-
+        Node closestNode = null;
         traversal:
         while(true){
-            distance++;
             while(!nodesToVisit.isEmpty()) {
-                Node visitedNode = nodesToVisit.pop();
-                visitedNode.visited = true;
-                for (Node node : visitedNode.connectedNodes) {
-                    if (node.equals(end))
-                        break traversal;
-                    if (!node.visited && !futureNodesToVisit.contains(node) && !nodesToVisit.contains(node))
+                Node currentNode = nodesToVisit.pop();
+                for (Node node : currentNode.connectedNodes) {
+                    if (node.traversedFrom == null && !futureNodesToVisit.contains(node) && !nodesToVisit.contains(node)) {
                         futureNodesToVisit.push(node);
+                        node.traversedFrom = currentNode;
+                    }
+                    for(Node endNode : endNodes) {
+                        if (node.equals(endNode)) {
+                            closestNode = endNode;
+                            break traversal;
+                        }
+                    }
                 }
             }
 
+            // No more nodes to visit
             if(futureNodesToVisit.isEmpty())
                 break;
 
             nodesToVisit = futureNodesToVisit;
             futureNodesToVisit = new Stack<Node>();
         }
-        resetNodesVisited();
 
-        return distance;
+        // Create the path from start to end by traversing the tree in reverse
+        List<Point> pointsToTraverse = new ArrayList<Point>();
+        Node currentNode = closestNode;
+        while(currentNode != start){
+            pointsToTraverse.add(0,currentNode.p);
+            currentNode = currentNode.traversedFrom;
+        }
+
+        resetNodesVisited();
+        return pointsToTraverse;
     }
 
     private void resetNodesVisited(){
         for(Node n : nodesByNodeKey.values())
-            n.visited = false;
+            n.traversedFrom = null;
     }
 
     /**
@@ -71,27 +104,27 @@ public class CityMap {
 
         while(!nodesToVisit.isEmpty()){
             Node currentNode = nodesToVisit.pop();
-
+            Point currentPoint = currentNode.p;
             // Check right
-            NodeKey key = new NodeKey(currentNode.row, currentNode.col + 1);
+            Point key = new Point(currentPoint.x + 1, currentPoint.y);
             linkNodes(currentNode, key);
 
             // Check left
-            key = new NodeKey(currentNode.row, currentNode.col - 1);
+            key = new Point(currentPoint.x - 1, currentPoint.y);
             linkNodes(currentNode, key);
 
             // Check up
-            key = new NodeKey(currentNode.row - 1, currentNode.col);
+            key = new Point(currentPoint.x, currentPoint.y + 1);
             linkNodes(currentNode, key);
 
             // Check down
-            key = new NodeKey(currentNode.row + 1, currentNode.col);
+            key = new Point(currentPoint.x, currentPoint.y - 1);
             linkNodes(currentNode, key);
         }
         nodesToVisit = null;
     }
 
-    private void linkNodes(Node currentNode, NodeKey key){
+    private void linkNodes(Node currentNode, Point key){
         Node candidate;
         if(nodesByNodeKey.containsKey(key))
             candidate = nodesByNodeKey.get(key);
@@ -99,12 +132,8 @@ public class CityMap {
             char candidateChar = getCharFromData(key);
             if(candidateChar == 'X')
                 return;
-            else if(candidateChar == ' ')
+            else
                 candidate = createNode(key);
-            else{
-                candidate = createNode(key);
-                specialNodes.put(candidateChar, candidate);
-            }
             nodesByNodeKey.put(key, candidate);
             nodesToVisit.push(candidate);
         }
@@ -125,11 +154,9 @@ public class CityMap {
                 char c = mapData[i][j];
                 if (c == 'X')
                     continue;
-                Node first = new Node(c,i,j);
+                Node first = new Node(c,new Point(j,i));
                 nodesToVisit.push(first);
-                nodesByNodeKey.put(new NodeKey(i, j), first);
-                if (c != ' ')
-                    specialNodes.put(c, first);
+                nodesByNodeKey.put(new Point(j, i), first);
                 return;
             }
         }
@@ -137,19 +164,19 @@ public class CityMap {
 
     /**
      * Wrapper to get value from mapData
-     * @param key
+     * @param p
      * @return
      */
-    private char getCharFromData(NodeKey key){
-        return mapData[key.row][key.col];
+    private char getCharFromData(Point p){
+        return mapData[p.y][p.x];
     }
 
     /**
      * Wrapper to create new node
-     * @param key
+     * @param p
      * @return
      */
-    private Node createNode(NodeKey key){
-        return new Node(mapData[key.row][key.col], key.row, key.col);
+    private Node createNode(Point p){
+        return new Node(mapData[p.y][p.x], p);
     }
 }
