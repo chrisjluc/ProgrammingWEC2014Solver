@@ -1,10 +1,10 @@
 import com.google.gson.Gson;
+import com.google.gson.stream.JsonWriter;
 import models.CustomerRequest;
 import models.Point;
 import models.actions.*;
 
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,9 +13,9 @@ import java.util.List;
  */
 public class GreedyOptimizer {
 
-    public static final String MAP_PATH = "/Users/chrisjluc/Documents/ProgrammingWEC2014Tester/generator/test/map100_1.txt";
-    public static final String CUSTOMER_REQUEST_PATH = "/Users/chrisjluc/Documents/ProgrammingWEC2014Tester/generator/test/requests100_1.txt";
-    public static final String ACTION_JSON_PATH = "/Users/chrisjluc/Documents/ProgrammingWEC2014Tester/generator/test/solver_actions_100_1.txt";
+    public static final String MAP_PATH = "/Users/chrisjluc/Documents/ProgrammingWEC2014Tester/generator/test/map1000_1.txt";
+    public static final String CUSTOMER_REQUEST_PATH = "/Users/chrisjluc/Documents/ProgrammingWEC2014Tester/generator/test/requests1000_1.txt";
+    public static final String ACTION_JSON_PATH = "/Users/chrisjluc/Documents/ProgrammingWEC2014Tester/generator/test/solver_actions_1000_1.txt";
 
     private CityMap m_cityMap;
     private CustomerRequestArrayList m_customerRequests;
@@ -25,16 +25,7 @@ public class GreedyOptimizer {
     public static void main(String... _args){
         GreedyOptimizer g = new GreedyOptimizer();
         g.optimize();
-        String json = g.getJSONStringOfActions();
-        try {
-            FileWriter writer = new FileWriter(ACTION_JSON_PATH);
-            writer.write(json);
-            writer.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println(json);
+        g.toJSONStringOfActions();
     }
 
     public GreedyOptimizer(){
@@ -73,12 +64,33 @@ public class GreedyOptimizer {
         }
     }
 
-    public String getJSONStringOfActions(){
+    public void toJSONStringOfActions(){
         TaxiActions taxiActions = new TaxiActions("taxi1",m_actions);
         List<TaxiActions> taxiActionsList = new ArrayList<TaxiActions>();
         taxiActionsList.add(taxiActions);
+        File file = new File(ACTION_JSON_PATH);
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            writeJSONStream(fos, m_actions);
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void writeJSONStream(FileOutputStream fos, List<Action> actions) throws IOException {
+        JsonWriter writer = new JsonWriter(new OutputStreamWriter(fos, "UTF-8"));
         Gson gson = new Gson();
-        return gson.toJson(taxiActionsList);
+        writer.setIndent("  ");
+        writer.beginArray();
+        for (Action action : actions) {
+            gson.toJson(action, Action.class, writer);
+        }
+        writer.endArray();
+        writer.close();
     }
 
     private List<Action> convertPointListToActionList(List<Point> points){
